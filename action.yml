@@ -1,4 +1,4 @@
-name: 'Run AWS ECS Fargate Task'
+name: 'Run AWS ECS Fargate Task with tags'
 description: >-
   Run an AWS ECS Fargate task and execute a custom commands. See the log output of the commands.
 
