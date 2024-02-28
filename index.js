@@ -14,7 +14,7 @@ const main = async () => {
         const taskDefinition = core.getInput('task-definition', {required: true});
         const subnets = core.getMultilineInput('subnet-ids', {required: true});
         const securityGroups = core.getMultilineInput('security-group-ids', {required: true});
-
+        
         // Inputs: Optional
         const tailLogs = core.getBooleanInput('tail-logs', {required: false});
         const assignPublicIp = core.getInput('assign-public-ip', {required: false});
@@ -29,6 +29,9 @@ const main = async () => {
             cluster,
             taskDefinition,
             launchType: 'FARGATE',
+            propagateTags: 'TASK_DEFINITION',
+            enableECSManagedTags: true,
+            startedBy: 'github-action-aws-ecs-run-task',
             networkConfiguration: {
                 awsvpcConfiguration: {
                     subnets,
