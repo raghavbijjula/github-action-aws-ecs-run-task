@@ -1,12 +1,18 @@
 const core = require('@actions/core');
 const aws = require('aws-sdk');
+
+const { ECS, waitUntilTasksRunning, waitUntilTasksStopped } = require('@aws-sdk/client-ecs');
+
 const smoketail = require('smoketail')
 
 const main = async () => {
     try {
         // Setup AWS clients
-        const ecs = new aws.ECS({
-            customUserAgent: 'github-action-aws-ecs-run-task'
+        const ecs = new ECS({
+            // The transformation for customUserAgent is not implemented.
+            // Refer to UPGRADING.md on aws-sdk-js-v3 for changes needed.
+            // Please create/upvote feature request on aws-sdk-js-codemod for customUserAgent.
+            customUserAgent: 'github-action-aws-ecs-run-task',
         });
 
         // Inputs: Required
@@ -92,7 +98,7 @@ const main = async () => {
         // Start task
         core.debug(JSON.stringify(taskRequestParams))
         core.debug(`Starting task.`)
-        let task = await ecs.runTask(taskRequestParams).promise();
+        let task = await ecs.runTask(taskRequestParams);
 
         // Get taskArn and taskId
         const taskArn = task.tasks[0].taskArn;
@@ -103,7 +109,10 @@ const main = async () => {
 
         // Wait for task to be in running state
         core.debug(`Waiting for task to be in running state.`)
-        await ecs.waitFor('tasksRunning', {cluster, tasks: [taskArn]}).promise();
+        await waitUntilTasksRunning({
+            client: ecs,
+            maxWaitTime: 200,
+        }, {cluster, tasks: [taskArn]});
 
         // Get logging configuration
         let logFilterStream = null;
@@ -111,7 +120,7 @@ const main = async () => {
 
         if (tailLogs) {
             core.debug(`Logging enabled. Getting logConfiguration from TaskDefinition.`)
-            let taskDef = await ecs.describeTaskDefinition({taskDefinition: taskDefinition}).promise();
+            let taskDef = await ecs.describeTaskDefinition({taskDefinition: taskDefinition});
             taskDef = taskDef.taskDefinition
 
             // Iterate all containers in TaskDef and search for given container with awslogs driver
@@ -159,11 +168,14 @@ const main = async () => {
 
         // Wait for Task to finish
         core.debug(`Waiting for task to finish.`);
-        await ecs.waitFor('tasksStopped', {
+        await waitUntilTasksStopped({
+            client: ecs,
+            minDelay: 6,
+            maxWaitTime: 120,
+        }, {
             cluster,
             tasks: [taskArn],
-            $waiter: {delay: 6, maxAttempts: taskStoppedWaitForMaxAttempts}}
-        ).promise();
+        });
 
         // Close LogStream and store output
         if (logFilterStream !== null) {
@@ -176,7 +188,7 @@ const main = async () => {
 
         // Describe Task to get Exit Code and Exceptions
         core.debug(`Process exit code and exception.`);
-        task = await ecs.describeTasks({cluster, tasks: [taskArn]}).promise();
+        task = await ecs.describeTasks({cluster, tasks: [taskArn]});
 
         // Get exitCode
         if (task.tasks[0].containers[0].exitCode !== 0) {
