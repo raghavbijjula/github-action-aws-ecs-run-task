@@ -23,7 +23,7 @@ const main = async () => {
         const overrideContainer = core.getInput('override-container', {required: false});
         const overrideContainerCommand = core.getMultilineInput('override-container-command', {required: false});
         const overrideContainerEnvironment = core.getMultilineInput('override-container-environment', {required: false});
-        const taskStoppedWaitForMaxAttempts = parseInt(core.getInput('task-stopped-wait-for-max-attempts', {required: false}));
+        // const taskStoppedWaitForMaxAttempts = parseInt(core.getInput('task-stopped-wait-for-max-attempts', {required: false}));
 
         // Build Task parameters
         const taskRequestParams = {

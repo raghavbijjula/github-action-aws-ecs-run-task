@@ -3,7 +3,7 @@
 <!-- action-docs-description -->
 ## Description
 
-Run an AWS ECS Fargate task and execute a custom command. See the log output of the command that is executed.
+Run an AWS ECS Fargate task and execute a custom commands. See the log output of the commands.
 <!-- action-docs-description -->
 
 ### Details
