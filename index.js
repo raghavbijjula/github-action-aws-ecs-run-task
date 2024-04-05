@@ -2,13 +2,11 @@ const core = require('@actions/core');
 const aws = require('aws-sdk');
 const smoketail = require('smoketail')
 
-const { ECS, waitUntilTasksRunning, waitUntilTasksStopped } = require('@aws-sdk/client-ecs');
-
 const main = async () => {
     try {
         // Setup AWS clients
-        const ecs = new ECS({
-            customUserAgent: 'github-action-aws-ecs-run-task',
+        const ecs = new aws.ECS({
+            customUserAgent: 'github-action-aws-ecs-run-task'
         });
 
         // Inputs: Required
@@ -23,7 +21,7 @@ const main = async () => {
         const overrideContainer = core.getInput('override-container', {required: false});
         const overrideContainerCommand = core.getMultilineInput('override-container-command', {required: false});
         const overrideContainerEnvironment = core.getMultilineInput('override-container-environment', {required: false});
-        // const taskStoppedWaitForMaxAttempts = parseInt(core.getInput('task-stopped-wait-for-max-attempts', {required: false}));
+        const taskStoppedWaitForMaxAttempts = parseInt(core.getInput('task-stopped-wait-for-max-attempts', {required: false}));
 
         // Build Task parameters
         const taskRequestParams = {
@@ -105,10 +103,7 @@ const main = async () => {
 
         // Wait for task to be in running state
         core.debug(`Waiting for task to be in running state.`)
-        await waitUntilTasksRunning({
-            client: ecs,
-            maxWaitTime: 200,
-        }, {cluster, tasks: [taskArn]});
+        await ecs.waitFor('tasksRunning', {cluster, tasks: [taskArn]}).promise();
 
         // Get logging configuration
         let logFilterStream = null;
@@ -116,7 +111,7 @@ const main = async () => {
 
         if (tailLogs) {
             core.debug(`Logging enabled. Getting logConfiguration from TaskDefinition.`)
-            let taskDef = await ecs.describeTaskDefinition({taskDefinition: taskDefinition});
+            let taskDef = await ecs.describeTaskDefinition({taskDefinition: taskDefinition}).promise();
             taskDef = taskDef.taskDefinition
 
             // Iterate all containers in TaskDef and search for given container with awslogs driver
@@ -164,14 +159,11 @@ const main = async () => {
 
         // Wait for Task to finish
         core.debug(`Waiting for task to finish.`);
-        await waitUntilTasksStopped({
-            client: ecs,
-            minDelay: 6,
-            maxWaitTime: 120,
-        }, {
+        await ecs.waitFor('tasksStopped', {
             cluster,
             tasks: [taskArn],
-        });
+            $waiter: {delay: 6, maxAttempts: taskStoppedWaitForMaxAttempts}}
+        ).promise();
 
         // Close LogStream and store output
         if (logFilterStream !== null) {
