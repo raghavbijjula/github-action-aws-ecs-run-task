@@ -1,17 +1,13 @@
 const core = require('@actions/core');
 const aws = require('aws-sdk');
+const smoketail = require('smoketail')
 
 const { ECS, waitUntilTasksRunning, waitUntilTasksStopped } = require('@aws-sdk/client-ecs');
-
-const smoketail = require('smoketail')
 
 const main = async () => {
     try {
         // Setup AWS clients
         const ecs = new ECS({
-            // The transformation for customUserAgent is not implemented.
-            // Refer to UPGRADING.md on aws-sdk-js-v3 for changes needed.
-            // Please create/upvote feature request on aws-sdk-js-codemod for customUserAgent.
             customUserAgent: 'github-action-aws-ecs-run-task',
         });
 
@@ -191,9 +187,12 @@ const main = async () => {
         task = await ecs.describeTasks({cluster, tasks: [taskArn]});
 
         // Get exitCode
-        if (task.tasks[0].containers[0].exitCode !== 0) {
+        if (overrideContainer && task.tasks[0].containers.find(container => container.name === overrideContainer).exitCode !== 0) {
             core.info(`Task failed, see details on Amazon ECS console: https://console.aws.amazon.com/ecs/home?region=${aws.config.region}#/clusters/${cluster}/tasks/${taskId}/details`);
-            core.setFailed(task.tasks[0].stoppedReason)
+            core.setFailed(task.tasks[0].stoppedReason);
+        } else if (!overrideContainer && task.tasks[0].containers[0].exitCode !== 0) {
+            core.info(`Task failed, see details on Amazon ECS console: https://console.aws.amazon.com/ecs/home?region=${aws.config.region}#/clusters/${cluster}/tasks/${taskId}/details`);
+            core.setFailed(task.tasks[0].stoppedReason);
         }
     } catch (error) {
         core.setFailed(error.message);
