@@ -92,7 +92,7 @@ const main = async () => {
         // Start task
         core.debug(JSON.stringify(taskRequestParams))
         core.debug(`Starting task.`)
-        let task = await ecs.runTask(taskRequestParams);
+        let task = await ecs.runTask(taskRequestParams).promise();
 
         // Get taskArn and taskId
         const taskArn = task.tasks[0].taskArn;
@@ -176,7 +176,7 @@ const main = async () => {
 
         // Describe Task to get Exit Code and Exceptions
         core.debug(`Process exit code and exception.`);
-        task = await ecs.describeTasks({cluster, tasks: [taskArn]});
+        task = await ecs.describeTasks({cluster, tasks: [taskArn]}).promise();
 
         // Get exitCode
         if (overrideContainer && task.tasks[0].containers.find(container => container.name === overrideContainer).exitCode !== 0) {
